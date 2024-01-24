@@ -1,0 +1,25 @@
+services:
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/postgres
+      NODE_ENV: development
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    command: sh -c "npx prisma migrate deploy && npm start"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:14.5-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      - '5432:5432'
+    restart: unless-stopped
