@@ -10,3 +10,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Ping {
+  txnHash         String  @id @unique
+  blockNumber     Int
+  isPongProcessed Boolean @default(false)
+  pong            Pong?
+}
+
+model Pong {
+  txnHash   String    @id @unique
+  nonce     Int       @unique
+  updatedAt DateTime  @default(now()) @updatedAt
+  txnStatus TxnStatus @default(Pending)
+  ping      Ping      @relation(fields: [pingId], references: [txnHash])
+  pingId    String    @unique //pingId is basically txhash of Ping event 
+}
+
+enum TxnStatus {
+  Pending
+  InProgress
+  Done
+  Failed
+}

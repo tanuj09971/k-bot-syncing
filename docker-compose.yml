@@ -23,3 +23,28 @@ services:
     ports:
       - '5432:5432'
     restart: unless-stopped
+
+  temporal:
+    container_name: temporal
+    depends_on:
+      - postgres
+    env_file:
+      - ./envs/temporal.env
+    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+    ports:
+      - 7233:7233
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+    labels:
+      kompose.volume.type: configMap
+
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+    ports:
+      - 8080:8080
