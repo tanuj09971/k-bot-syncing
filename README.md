@@ -9,7 +9,6 @@
 ![Okteto](https://img.shields.io/badge/Deployed%20on-Okteto-blue)
 
 <br/>
-
 <br/>
 
 ## Table of Contents
