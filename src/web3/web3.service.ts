@@ -2,6 +2,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
+import { delay } from "src/services/events/utils/utils";
 
 @Injectable()
 export class Web3Service {
@@ -48,8 +49,10 @@ export class Web3Service {
         return this.ethersInstance;
       } catch (error) {
         this.logger.error(`Error connecting to ${url}: ${error.message}`);
+        await delay(DELAY);
       }
     }
+
     throw new Error("Failed to connect after multiple attempts");
   }
 

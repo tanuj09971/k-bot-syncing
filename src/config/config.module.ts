@@ -8,6 +8,7 @@ const CONFIG_SCHEMA = Joi.object({
   contractAbi: Joi.string(),
   contractAddress: Joi.string(),
   web3NodeUrl: Joi.array().items(Joi.string()),
+  temporalHost: Joi.string(),
   fromBlock: Joi.number(),
 }).options({ abortEarly: false });
 
