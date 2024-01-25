@@ -10,6 +10,7 @@ import {
   Runtime,
 } from "@temporalio/worker";
 import { TemporalJobModule } from "./services/temporal/temporal.module";
+import { HealthModule } from "./health/health.module";
 import { DataManagerModule } from "./services/dataManager/dataManager.module";
 
 @Module({
@@ -18,6 +19,7 @@ import { DataManagerModule } from "./services/dataManager/dataManager.module";
     AppConfigModule,
     Web3Module,
     EventModule,
+    HealthModule,
     DataManagerModule,
     TemporalModule.registerWorkerAsync({
       imports: [ConfigModule],
