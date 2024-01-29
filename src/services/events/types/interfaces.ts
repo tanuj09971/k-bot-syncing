@@ -9,7 +9,7 @@ export interface PingDTO {
 export enum Timeout {
   Timeout = "Timeout",
 }
-export const TIMEOUT_DURATION = 180000;
+export const TIMEOUT_DURATION = 240000;
 export const GAS_PRICE_MULTIPLIER = BigInt(3);
 export const MAX_RANGE_SIZE = 1000;
 export interface PongEntryDTO {
@@ -32,4 +32,9 @@ export interface EthereumTransactionEvent {
 export interface BlockRange {
   fromBlock: number;
   toBlock: number;
+}
+
+export interface updatePongStatusDto {
+  pingId: string;
+  txnStatus: TxnStatus;
 }

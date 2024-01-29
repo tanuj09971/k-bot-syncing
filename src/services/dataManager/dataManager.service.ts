@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
 import { PrismaService } from "src/prisma/prisma.service";
-import { PongEntryDTO } from "../events/types/interfaces";
+import { PongEntryDTO, updatePongStatusDto } from "../events/types/interfaces";
 import { Ping, Pong, TxnStatus } from "@prisma/client";
 import { CreatePingDTO } from "./types/interface";
 
@@ -103,10 +103,10 @@ export class DataManagerService {
     return pongEvent;
   }
 
-  async updatePongStatus(pingId, txnHash: string, txnStatus: TxnStatus) {
+  async updatePongStatus(dto: updatePongStatusDto) {
+    const { pingId, txnStatus } = dto;
     await this.prisma.pong.update({
       where: {
-        txnHash: txnHash,
         pingId: pingId,
       },
       data: {

@@ -12,14 +12,11 @@ import {
 } from "./types/interfaces";
 @Injectable()
 export class EventsService {
-
-
   constructor(
     private web3Service: Web3Service,
     private logger: Logger,
     private dataManagerService: DataManagerService
-  ) {
-  }
+  ) {}
 
   async calculateTransactionNonce(isFailedTxn: boolean): Promise<number> {
     const nonce = await this.web3Service.getNonce();
@@ -34,10 +31,10 @@ export class EventsService {
   ): Promise<void> {
     let txnSuccessfull = false;
     let timeout = false;
-    
+
     while (!txnSuccessfull && !timeout) {
       const nonce = await this.calculateTransactionNonce(isFailedTxn);
-      const tx=await  this.web3Service.makePongContractCall(txnHash,nonce)
+      const tx = await this.web3Service.makePongContractCall(txnHash, nonce);
       await this.dataManagerService.markPingAsProcessed(txnHash);
       try {
         this.logger.log("tx created", tx);
@@ -61,23 +58,22 @@ export class EventsService {
           setTimeout(() => reject(new Error(Timeout.Timeout)), TIMEOUT_DURATION)
         );
         const result = await Promise.race([txnPromise, timeoutPromise]);
-        if (result === Timeout.Timeout) {
+        const receipt = await txnPromise;
+        if (result === Timeout.Timeout && receipt.status !== 1) {
           timeout = true;
         } else {
-          await this.dataManagerService.updatePongStatus(
-            txnHash,
-            tx?.hash,
-            TxnStatus.Done
-          );
+          await this.dataManagerService.updatePongStatus({
+            pingId: txnHash,
+            txnStatus: TxnStatus.Done,
+          });
           txnSuccessfull = true;
           this.logger.log("Pong function executed successfully!");
         }
       } catch (error) {
-        await this.dataManagerService.updatePongStatus(
-          txnHash,
-          tx?.hash,
-          TxnStatus.Failed
-        );
+        await this.dataManagerService.updatePongStatus({
+          pingId: txnHash,
+          txnStatus: TxnStatus.Done,
+        });
         await delay(DELAY);
         this.logger.error("Error calling Pong function:", error);
       }
