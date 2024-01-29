@@ -10,74 +10,146 @@ import {
   TIMEOUT_DURATION,
   Timeout,
 } from "./types/interfaces";
+import { ConfigService } from "@nestjs/config";
+import { TransactionReceipt, TransactionResponse } from "ethers";
 @Injectable()
 export class EventsService {
+  private contractAddress: string;
+
   constructor(
     private web3Service: Web3Service,
+    private configService: ConfigService,
     private logger: Logger,
     private dataManagerService: DataManagerService
-  ) {}
-
-  async calculateTransactionNonce(isFailedTxn: boolean): Promise<number> {
+  ) {
+    this.initialize();
+  }
+  private async initialize() {
+    this.contractAddress = this.configService.get("contractAddress");
+  }
+  async calculateTransactionNonce(): Promise<number> {
     const nonce = await this.web3Service.getNonce();
     const lastPongEvent = await this.dataManagerService.getLastPongEvent();
-    const lastProcessedNonce = isFailedTxn ? nonce : lastPongEvent?.nonce + 1;
-    return lastProcessedNonce ? lastProcessedNonce : nonce;
+    return lastPongEvent?.nonce ? lastPongEvent?.nonce : nonce;
   }
 
-  async sendPongTransaction(
-    txnHash: string,
-    isFailedTxn?: boolean
-  ): Promise<void> {
+  async executePongTransaction(txnHash: string): Promise<void> {
     let txnSuccessfull = false;
-    let timeout = false;
+    let loopCount = 0;
+    let tx;
+    let receipt;
+    while (!txnSuccessfull) {
+      const gasPriceMultiplier = BigInt(loopCount + 1);
+      const nonce = await this.calculateTransactionNonce();
 
-    while (!txnSuccessfull && !timeout) {
-      const nonce = await this.calculateTransactionNonce(isFailedTxn);
-      const tx = await this.web3Service.makePongContractCall(txnHash, nonce);
-      await this.dataManagerService.markPingAsProcessed(txnHash);
       try {
-        this.logger.log("tx created", tx);
-        if (isFailedTxn) {
-          await this.dataManagerService.updatePongEntry({
-            nonce: tx?.nonce,
-            txnHash: tx?.hash,
-            pingId: txnHash,
-            txnStatus: TxnStatus.InProgress,
-          });
-        } else {
-          await this.dataManagerService.createPongRecord({
-            nonce: tx?.nonce,
-            txnHash: tx?.hash,
-            pingId: txnHash,
-            txnStatus: TxnStatus.InProgress,
-          });
-        }
-        const txnPromise = tx.wait();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(Timeout.Timeout)), TIMEOUT_DURATION)
+        tx = await this.createPongContractCall(
+          txnHash,
+          nonce,
+          gasPriceMultiplier
         );
-        const result = await Promise.race([txnPromise, timeoutPromise]);
-        const receipt = await txnPromise;
-        if (result === Timeout.Timeout && receipt.status !== 1) {
-          timeout = true;
-        } else {
-          await this.dataManagerService.updatePongStatus({
-            pingId: txnHash,
-            txnStatus: TxnStatus.Done,
-          });
+        if (!loopCount) {
+          await this.createInitialPongRecord(txnHash, tx);
+        }
+
+        const result = await this.waitForTransactionResult(tx);
+        receipt = await tx.wait();
+
+        if (result !== Timeout.Timeout && receipt.status === 1) {
+          await this.handleSuccessfulPongExecution(txnHash);
           txnSuccessfull = true;
-          this.logger.log("Pong function executed successfully!");
         }
       } catch (error) {
-        await this.dataManagerService.updatePongStatus({
-          pingId: txnHash,
-          txnStatus: TxnStatus.Done,
-        });
-        await delay(DELAY);
-        this.logger.error("Error calling Pong function:", error);
+        await this.handleFailedPongExecution(txnHash, tx, error, receipt);
       }
+
+      await delay(DELAY);
+      loopCount++;
     }
+  }
+
+  buildTransaction(txnHash: string): { to: string; data: string } {
+    return {
+      to: this.contractAddress,
+      data: this.web3Service.encodePongFunctionData(txnHash),
+    };
+  }
+
+  async createPongContractCall(
+    txnHash: string,
+    nonce: number,
+    gasPriceMultiplier: bigint
+  ): Promise<TransactionResponse> {
+    const transaction = this.buildTransaction(txnHash);
+    const gasPrice = await this.web3Service.estimateGasPrice(transaction);
+    const newGasPrice = gasPrice * gasPriceMultiplier;
+    const tx = await this.web3Service.makePongContractCall(
+      txnHash,
+      nonce,
+      newGasPrice
+    );
+    this.logger.log("tx created", tx);
+    await this.dataManagerService.createPongTransactionRecord({
+      nonce: tx.nonce,
+      txnHash: tx.hash,
+      pingId: txnHash,
+    });
+    return tx;
+  }
+
+  async createInitialPongRecord(
+    txnHash: string,
+    tx: TransactionResponse
+  ): Promise<void> {
+    if (tx.nonce !== undefined && tx.hash !== undefined) {
+      await this.dataManagerService.createPongRecord({
+        nonce: tx.nonce,
+        txnHash: tx.hash,
+        pingId: txnHash,
+        txnStatus: TxnStatus.InProgress,
+      });
+
+      await this.dataManagerService.markPingAsProcessed(txnHash);
+    }
+  }
+
+  async waitForTransactionResult(
+    tx: TransactionResponse
+  ): Promise<TransactionReceipt | string> {
+    const timeoutPromise = new Promise<string | Timeout>((_, reject) =>
+      setTimeout(() => reject(new Error(Timeout.Timeout)), TIMEOUT_DURATION)
+    );
+    const txnPromise = tx.wait();
+    return Promise.race([txnPromise, timeoutPromise]);
+  }
+
+  async handleSuccessfulPongExecution(txnHash: string): Promise<void> {
+    await this.dataManagerService.updatePongStatus({
+      pingId: txnHash,
+      txnStatus: TxnStatus.Done,
+    });
+
+    this.logger.log("Pong function executed successfully!");
+  }
+
+  async handleFailedPongExecution(
+    txnHash: string,
+    tx: TransactionResponse,
+    error: any,
+    receipt: TransactionReceipt
+  ): Promise<void> {
+    if (receipt?.status === 0) {
+      await this.dataManagerService.updatePongStatus({
+        pingId: txnHash,
+        txnStatus: TxnStatus.Failed,
+      });
+    }
+    await this.dataManagerService.updatePongTransactionRecord({
+      txnHash: tx?.hash,
+      message: error?.message,
+    });
+
+    this.logger.error("Error calling Pong function:", error);
   }
 
   async getPingDetails({

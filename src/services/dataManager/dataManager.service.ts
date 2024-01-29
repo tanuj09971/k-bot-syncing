@@ -1,25 +1,28 @@
 import { Injectable } from "@nestjs/common";
-
 import { PrismaService } from "src/prisma/prisma.service";
-import { PongEntryDTO, updatePongStatusDto } from "../events/types/interfaces";
+import { PongRecordDto, updatePongStatusDto } from "../events/types/interfaces";
 import { Ping, Pong, TxnStatus } from "@prisma/client";
-import { CreatePingDTO } from "./types/interface";
+import {
+  CreatePingDTO,
+  PongTransactionCreateDTO,
+  PongTransactionUpdateDTO,
+} from "./types/interface";
 
 @Injectable()
 export class DataManagerService {
   constructor(private prisma: PrismaService) {}
 
-  async updatePingStatus(
-    txnHash: string,
-    isPongProcessed: boolean
-  ): Promise<void> {
-    await this.prisma.ping.update({
-      where: { txnHash: txnHash },
-      data: { isPongProcessed: isPongProcessed },
+  // CREATE operations
+  async createPingRecord(data: CreatePingDTO): Promise<void> {
+    await this.prisma.ping.create({
+      data: {
+        txnHash: data.txnHash,
+        blockNumber: data.blockNumber,
+      },
     });
   }
 
-  async createPongRecord(dto: PongEntryDTO) {
+  async createPongRecord(dto: PongRecordDto) {
     const { nonce, txnHash, pingId } = dto;
     await this.prisma.pong.create({
       data: {
@@ -31,12 +34,12 @@ export class DataManagerService {
     });
   }
 
-  async updatePongEntry(dto: PongEntryDTO) {
-    const { nonce, txnHash, pingId } = dto;
-    await this.prisma.pong.update({
-      where: {
-        nonce: nonce,
-      },
+  async createPongTransactionRecord({
+    nonce,
+    txnHash,
+    pingId,
+  }: PongTransactionCreateDTO) {
+    await this.prisma.pongTransaction.create({
       data: {
         nonce: nonce,
         txnHash: txnHash,
@@ -45,20 +48,12 @@ export class DataManagerService {
     });
   }
 
+  // READ operations
   async getLatestPing() {
     const latestPing = await this.prisma.ping.findFirst({
       orderBy: { blockNumber: "desc" },
     });
     return latestPing;
-  }
-
-  async createPingRecord(data: CreatePingDTO): Promise<void> {
-    await this.prisma.ping.create({
-      data: {
-        txnHash: data.txnHash,
-        blockNumber: data.blockNumber,
-      },
-    });
   }
 
   async getUnprocessedPings(): Promise<Ping[]> {
@@ -103,6 +98,17 @@ export class DataManagerService {
     return pongEvent;
   }
 
+  // UPDATE operations
+  async updatePingStatus(
+    txnHash: string,
+    isPongProcessed: boolean
+  ): Promise<void> {
+    await this.prisma.ping.update({
+      where: { txnHash: txnHash },
+      data: { isPongProcessed: isPongProcessed },
+    });
+  }
+
   async updatePongStatus(dto: updatePongStatusDto) {
     const { pingId, txnStatus } = dto;
     await this.prisma.pong.update({
@@ -133,6 +139,19 @@ export class DataManagerService {
     });
   }
 
+  async updatePongTransactionRecord({
+    txnHash,
+    message,
+  }: PongTransactionUpdateDTO) {
+    await this.prisma.pongTransaction.update({
+      where: {
+        txnHash: txnHash,
+      },
+      data: {
+        message: message,
+      },
+    });
+  }
   async markPingAsProcessed(txnHash: string) {
     await this.prisma.ping.updateMany({
       where: {

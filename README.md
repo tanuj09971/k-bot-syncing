@@ -6,7 +6,6 @@
 ![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
 ![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue)
 ![Temporal](https://img.shields.io/badge/Workflow%20Engine-Temporal-blue)
-![Okteto](https://img.shields.io/badge/Deployed%20on-Okteto-blue)
 
 <br/>
 

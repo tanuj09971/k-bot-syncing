@@ -18,12 +18,21 @@ model Ping {
 }
 
 model Pong {
-  txnHash   String    @id @unique
-  nonce     Int       @unique
-  updatedAt DateTime  @default(now()) @updatedAt
-  txnStatus TxnStatus @default(Pending)
-  ping      Ping      @relation(fields: [pingId], references: [txnHash])
-  pingId    String    @unique //pingId is basically txhash of Ping event 
+  txnHash          String            @id @unique
+  nonce            Int               @unique
+  updatedAt        DateTime          @default(now()) @updatedAt
+  txnStatus        TxnStatus         @default(Pending)
+  ping             Ping              @relation(fields: [pingId], references: [txnHash])
+  pingId           String            @unique //pingId is basically txhash of Ping event 
+  pongTransactions PongTransaction[]
+}
+
+model PongTransaction {
+  nonce   Int
+  txnHash String  @unique
+  message String?
+  pingId  String
+  pong    Pong    @relation(fields: [pingId], references: [pingId])
 }
 
 enum TxnStatus {

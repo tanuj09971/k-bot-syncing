@@ -26,9 +26,7 @@ export class TemporalController {
   }
   async onModuleInit() {
     this.checkAndTerminateWorkflow("wf-ping");
-    this.checkAndTerminateWorkflow("wf-pong-failed");
     this.checkAndTerminateWorkflow("wf-pong");
-    this.checkAndTerminateWorkflow("wf-pong-in-progress");
 
     const handle = await this.temporalClient.start(
       "watcherForPingEventsSyncing",
@@ -48,7 +46,6 @@ export class TemporalController {
       {
         args: [],
         taskQueue: "default",
-        startDelay: 2000,
         workflowId: "wf-pong",
         cronSchedule: "* * * * *",
         retry: {
@@ -57,31 +54,5 @@ export class TemporalController {
       }
     );
     this.logger.log(`Started workflow ${pongHandle.workflowId}`);
-    const pongFailedHandle = await this.temporalClient.start(
-      "watcherForFailedPongEventsEmitting",
-      {
-        args: [],
-        taskQueue: "default",
-        workflowId: "wf-pong-failed",
-        cronSchedule: "* * * * *",
-        retry: {
-          maximumAttempts: 3,
-        },
-      }
-    );
-    this.logger.log(`Started workflow ${pongFailedHandle.workflowId}`);
-    const pongInProgressHandle = await this.temporalClient.start(
-      "watcherForinProgressPongEventsEmitting",
-      {
-        args: [],
-        taskQueue: "default",
-        workflowId: "wf-pong-in-progress",
-        cronSchedule: "* * * * *",
-        retry: {
-          maximumAttempts: 3,
-        },
-      }
-    );
-    this.logger.log(`Started workflow ${pongInProgressHandle.workflowId}`);
   }
 }

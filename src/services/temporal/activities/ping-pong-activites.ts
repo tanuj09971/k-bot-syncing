@@ -1,17 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Activities, Activity } from "nestjs-temporal";
+import { DataManagerService } from "src/services/dataManager/dataManager.service";
 import { EventsService } from "src/services/events/events.service";
 import { Web3Service } from "src/web3/web3.service";
 import { PingEvent } from "../types/interface";
-import { DataManagerService } from "src/services/dataManager/dataManager.service";
-import { GAS_PRICE_MULTIPLIER } from "src/services/events/types/interfaces";
-import { TxnStatus } from "@prisma/client";
-import {
-  DELAY,
-  delay,
-  isOlderThan3Minutes,
-} from "src/services/events/utils/utils";
 
 @Injectable()
 @Activities()
@@ -22,7 +15,6 @@ export class ContractWatchers {
     private configService: ConfigService,
     private web3Service: Web3Service,
     private eventService: EventsService,
-    private logger: Logger,
     private dataManagerService: DataManagerService
   ) {
     this.initialize();
@@ -55,60 +47,10 @@ export class ContractWatchers {
   }
 
   @Activity()
-  async watchProcessedPongEvents(): Promise<void> {
+  async executeUnprocessedPongTransactions(): Promise<void> {
     const pingResults = await this.dataManagerService.getUnprocessedPings();
     for (const result of pingResults) {
-      await this.eventService.sendPongTransaction(result?.txnHash);
-    }
-  }
-
-  @Activity()
-  async watchFailedEmitPongEvents(): Promise<void> {
-    const failedPongEvents =
-      await this.dataManagerService.getFailedPongEvents();
-    for (const result of failedPongEvents) {
-      await this.eventService.sendPongTransaction(result?.pingId, true);
-    }
-  }
-
-  @Activity()
-  async watchInProgressPong(): Promise<void> {
-    const inProgressPongEvent =
-      await this.dataManagerService.getInProgressPongEvent();
-    if (inProgressPongEvent) {
-      const { pingId, nonce, updatedAt } = inProgressPongEvent;
-      const transaction = {
-        to: this.contractAddress,
-        data: this.web3Service.encodePongFunctionData(pingId),
-      };
-      const isTxnOlderThan3Minutes = isOlderThan3Minutes(updatedAt);
-      if (isTxnOlderThan3Minutes) {
-        const gasPrice = await this.web3Service.estimateGasPrice(transaction);
-        const newTx = await this.web3Service.makePongContractCall(
-          pingId,
-          nonce,
-          gasPrice * GAS_PRICE_MULTIPLIER
-        );
-        try {
-          await newTx.wait();
-          await this.dataManagerService.updatePingStatus(pingId, true);
-          await this.dataManagerService.updatePongRecord(
-            newTx.txnHash,
-            TxnStatus.Done,
-            pingId,
-            newTx?.nonce
-          );
-        } catch (error) {
-          await this.dataManagerService.updatePongRecord(
-            newTx.txnHash,
-            TxnStatus.Failed,
-            pingId,
-            newTx?.nonce
-          );
-          await delay(DELAY);
-          this.logger.error("Error calling Pong function:", error);
-        }
-      }
+      await this.eventService.executePongTransaction(result?.txnHash);
     }
   }
 }
@@ -118,13 +60,5 @@ export interface PingActivity {
 }
 
 export interface PongActivity {
-  watchProcessedPongEvents(): Promise<void>;
-}
-
-export interface FailedPongActivity {
-  watchFailedEmitPongEvents(): Promise<void>;
-}
-
-export interface InProgressPongActivity {
-  watchInProgressPong(): Promise<void>;
+  executeUnprocessedPongTransactions(): Promise<void>;
 }
