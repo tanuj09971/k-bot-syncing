@@ -11,7 +11,7 @@ import {
 } from "@temporalio/worker";
 import { TemporalJobModule } from "./services/temporal/temporal.module";
 import { HealthModule } from "./health/health.module";
-import { DataManagerModule } from "./services/dataManager/dataManager.module";
+import { PingPongModule } from "./services/dataManager/pingPong.module";
 
 @Module({
   imports: [
@@ -20,7 +20,7 @@ import { DataManagerModule } from "./services/dataManager/dataManager.module";
     Web3Module,
     EventModule,
     HealthModule,
-    DataManagerModule,
+    PingPongModule,
     TemporalModule.registerWorkerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

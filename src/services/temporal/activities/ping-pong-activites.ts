@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Activities, Activity } from "nestjs-temporal";
-import { DataManagerService } from "src/services/dataManager/dataManager.service";
+import { PingPongService } from "src/services/dataManager/pingPong.service";
 import { EventsService } from "src/services/events/events.service";
 import { Web3Service } from "src/web3/web3.service";
 import { PingEvent } from "../types/interface";
@@ -15,7 +15,7 @@ export class ContractWatchers {
     private configService: ConfigService,
     private web3Service: Web3Service,
     private eventService: EventsService,
-    private dataManagerService: DataManagerService
+    private pingPongService: PingPongService
   ) {
     this.initialize();
   }
@@ -27,7 +27,7 @@ export class ContractWatchers {
     const latestBlockNumber: number = await this.web3Service.getBlockNumber();
     const startBlock =
       this.configService.get("fromBlock") ?? latestBlockNumber - 15;
-    const lastPingEvent = await this.dataManagerService.getLatestPing();
+    const lastPingEvent = await this.pingPongService.getLatestPing();
     const latestFetchedBlock: number = lastPingEvent?.blockNumber ?? startBlock;
     const fromBlock = latestFetchedBlock + 1;
     const toBlock = latestBlockNumber;
@@ -37,7 +37,7 @@ export class ContractWatchers {
       toBlock: toBlock,
     });
     const createPingPromises = pingEventsData.map(async (event: PingEvent) => {
-      return this.dataManagerService.createPingRecord({
+      return this.pingPongService.createPingRecord({
         txnHash: event?.transactionHash,
         blockNumber: event?.blockNumber,
       });
@@ -48,7 +48,7 @@ export class ContractWatchers {
 
   @Activity()
   async executeUnprocessedPongTransactions(): Promise<void> {
-    const pingResults = await this.dataManagerService.getUnprocessedPings();
+    const pingResults = await this.pingPongService.getUnprocessedPings();
     for (const result of pingResults) {
       await this.eventService.executePongTransaction(result?.txnHash);
     }

@@ -175,9 +175,7 @@ Dockerizing a NestJS app provides numerous advantages, such as simplified deploy
 
 In the application, RPC rate limits are managed by storing multiple RPC requests in an array. Interactions with the web3 involve triggering functions for each RPC, utilizing Promise.any to execute the activity with the result from the fastest responding RPC. If all RPCs fail, a retry mechanism is implemented after a set interval to reattempt the requests. This approach optimizes responsiveness by prioritizing the quickest RPC response while ensuring robustness through periodic retries in case of failures.
 
-### Workflows for pending and failed Transactions
 
-Implementing robust transaction workflows involves distinct temporal watchers for pending and failed transactions. For transactions stuck in the mempool, a dedicated mechanism resubmits requests with higher gas fees after a 3-minute threshold. Similarly, for failed transactions, an automated process initiates transaction retries, ensuring transaction completion and reliability.
 
 ### Transaction Atomicity
 

@@ -6,6 +6,7 @@ export interface PongTransactionCreateDTO {
   nonce: number;
   txnHash: string;
   pingId: string;
+  message?: string;
 }
 
 export interface PongTransactionUpdateDTO {

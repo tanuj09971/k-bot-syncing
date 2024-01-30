@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Web3Service } from "../../web3/web3.service";
 import { TxnStatus } from "@prisma/client";
-import { DataManagerService } from "../dataManager/dataManager.service";
+import { PingPongService } from "../dataManager/pingPong.service";
 import { DELAY, delay } from "./utils/utils";
 import {
   BlockRange,
@@ -20,7 +20,7 @@ export class EventsService {
     private web3Service: Web3Service,
     private configService: ConfigService,
     private logger: Logger,
-    private dataManagerService: DataManagerService
+    private pingPongService: PingPongService
   ) {
     this.initialize();
   }
@@ -29,7 +29,7 @@ export class EventsService {
   }
   async calculateTransactionNonce(): Promise<number> {
     const nonce = await this.web3Service.getNonce();
-    const lastPongEvent = await this.dataManagerService.getLastPongEvent();
+    const lastPongEvent = await this.pingPongService.getLastPongTransaction();
     return lastPongEvent?.nonce ? lastPongEvent?.nonce : nonce;
   }
 
@@ -38,31 +38,35 @@ export class EventsService {
     let loopCount = 0;
     let tx;
     let receipt;
+    let prevHash;
     while (!txnSuccessfull) {
       const gasPriceMultiplier = BigInt(loopCount + 1);
       const nonce = await this.calculateTransactionNonce();
-
+      if (prevHash) {
+        const prevReceipt = await this.web3Service.getReceipt(prevHash);
+        if (prevReceipt.status) break;
+      }
       try {
         tx = await this.createPongContractCall(
           txnHash,
           nonce,
           gasPriceMultiplier
         );
-        if (!loopCount) {
+        if (!loopCount && tx) {
           await this.createInitialPongRecord(txnHash, tx);
         }
 
         const result = await this.waitForTransactionResult(tx);
-        receipt = await tx.wait();
+        receipt = result !== Timeout.Timeout ? result : null;
 
-        if (result !== Timeout.Timeout && receipt.status === 1) {
-          await this.handleSuccessfulPongExecution(txnHash);
+        if (result !== Timeout.Timeout && receipt?.status === 1) {
+          this.handleSuccessfulPongExecution(txnHash, tx);
           txnSuccessfull = true;
         }
       } catch (error) {
         await this.handleFailedPongExecution(txnHash, tx, error, receipt);
       }
-
+      prevHash = tx?.hash;
       await delay(DELAY);
       loopCount++;
     }
@@ -89,11 +93,7 @@ export class EventsService {
       newGasPrice
     );
     this.logger.log("tx created", tx);
-    await this.dataManagerService.createPongTransactionRecord({
-      nonce: tx.nonce,
-      txnHash: tx.hash,
-      pingId: txnHash,
-    });
+
     return tx;
   }
 
@@ -102,33 +102,40 @@ export class EventsService {
     tx: TransactionResponse
   ): Promise<void> {
     if (tx.nonce !== undefined && tx.hash !== undefined) {
-      await this.dataManagerService.createPongRecord({
-        nonce: tx.nonce,
-        txnHash: tx.hash,
+      await this.pingPongService.createPongRecord({
+        nonce: tx?.nonce,
+        txnHash: tx?.hash,
         pingId: txnHash,
         txnStatus: TxnStatus.InProgress,
       });
 
-      await this.dataManagerService.markPingAsProcessed(txnHash);
+      await this.pingPongService.markPingAsProcessed(txnHash);
     }
   }
 
   async waitForTransactionResult(
     tx: TransactionResponse
   ): Promise<TransactionReceipt | string> {
-    const timeoutPromise = new Promise<string | Timeout>((_, reject) =>
-      setTimeout(() => reject(new Error(Timeout.Timeout)), TIMEOUT_DURATION)
+    const timeoutPromise = new Promise<string | Timeout>((_, resolve) =>
+      setTimeout(() => resolve(Timeout.Timeout), TIMEOUT_DURATION)
     );
     const txnPromise = tx.wait();
     return Promise.race([txnPromise, timeoutPromise]);
   }
+  handleSuccessfulPongExecution(
+    txnHash: string,
+    tx: TransactionResponse
+  ): void {
+    this.pingPongService.createPongTransactionRecord({
+      nonce: tx.nonce,
+      txnHash: tx.hash,
+      pingId: txnHash,
+    });
 
-  async handleSuccessfulPongExecution(txnHash: string): Promise<void> {
-    await this.dataManagerService.updatePongStatus({
+    this.pingPongService.updatePongStatus({
       pingId: txnHash,
       txnStatus: TxnStatus.Done,
     });
-
     this.logger.log("Pong function executed successfully!");
   }
 
@@ -138,17 +145,21 @@ export class EventsService {
     error: any,
     receipt: TransactionReceipt
   ): Promise<void> {
-    if (receipt?.status === 0) {
-      await this.dataManagerService.updatePongStatus({
+    console.log("🚀 ~ EventsService ~ receipt:", receipt);
+    if (txnHash && receipt?.status === 0) {
+      await this.pingPongService.updatePongStatus({
         pingId: txnHash,
         txnStatus: TxnStatus.Failed,
       });
     }
-    await this.dataManagerService.updatePongTransactionRecord({
-      txnHash: tx?.hash,
-      message: error?.message,
-    });
-
+    if (tx) {
+      await this.pingPongService.createPongTransactionRecord({
+        nonce: tx?.nonce,
+        txnHash: tx?.hash,
+        pingId: txnHash,
+        message: error?.message,
+      });
+    }
     this.logger.error("Error calling Pong function:", error);
   }
 
@@ -173,7 +184,7 @@ export class EventsService {
   }
 
   async getLastProcessedBlock(): Promise<number> {
-    const lastPingEvent = await this.dataManagerService.getLatestPing();
+    const lastPingEvent = await this.pingPongService.getLatestPing();
     return lastPingEvent?.blockNumber;
   }
 }

@@ -9,7 +9,7 @@ import {
 } from "./types/interface";
 
 @Injectable()
-export class DataManagerService {
+export class PingPongService {
   constructor(private prisma: PrismaService) {}
 
   // CREATE operations
@@ -38,12 +38,14 @@ export class DataManagerService {
     nonce,
     txnHash,
     pingId,
+    message,
   }: PongTransactionCreateDTO) {
     await this.prisma.pongTransaction.create({
       data: {
         nonce: nonce,
         txnHash: txnHash,
         pingId: pingId,
+        message: message,
       },
     });
   }
@@ -65,16 +67,7 @@ export class DataManagerService {
     return receivedPings;
   }
 
-  async getFailedPongEvents(): Promise<Pong[]> {
-    const failedPongEvents = await this.prisma.pong.findMany({
-      where: {
-        txnStatus: TxnStatus.Failed,
-      },
-    });
-    return failedPongEvents;
-  }
-
-  async getLastPongEvent(): Promise<Pong> {
+  async getLastPongTransaction(): Promise<Pong> {
     const lastPongEvent = await this.prisma.pong.findFirst({
       orderBy: {
         nonce: "desc",
@@ -86,17 +79,6 @@ export class DataManagerService {
     return lastPongEvent;
   }
 
-  async getInProgressPongEvent() {
-    const pongEvent = await this.prisma.pong.findFirst({
-      where: {
-        txnStatus: TxnStatus.InProgress,
-      },
-      orderBy: {
-        nonce: "desc",
-      },
-    });
-    return pongEvent;
-  }
 
   // UPDATE operations
   async updatePingStatus(

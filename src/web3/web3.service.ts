@@ -110,6 +110,11 @@ export class Web3Service {
     return this.contract.interface.encodeFunctionData("pong", [pingId]);
   }
 
+  async getReceipt(txHash: string): Promise<ethers.TransactionReceipt> {
+    const receipt = await this.ethersInstance.getTransactionReceipt(txHash);
+    return receipt;
+  }
+
   private async getPingLogs(
     url: string,
     startBlock: number,

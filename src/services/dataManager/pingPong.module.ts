@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
-import { DataManagerService } from "./dataManager.service";
+import { PingPongService } from "./pingPong.service";
 import { PrismaService } from "src/prisma/prisma.service";
 
 @Module({
   imports: [],
   controllers: [],
-  providers: [DataManagerService, PrismaService],
+  providers: [PingPongService, PrismaService],
 })
-export class DataManagerModule {}
+export class PingPongModule {}
