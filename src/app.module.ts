@@ -11,7 +11,7 @@ import {
 } from "@temporalio/worker";
 import { TemporalJobModule } from "./services/temporal/temporal.module";
 import { HealthModule } from "./health/health.module";
-import { PingPongModule } from "./services/dataManager/pingPong.module";
+import { PingPongModule } from "./services/pingPong/pingPong.module";
 
 @Module({
   imports: [

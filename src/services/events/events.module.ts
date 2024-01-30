@@ -5,7 +5,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { ConfigService } from "@nestjs/config";
 import { Web3Service } from "src/web3/web3.service";
 import { TemporalJobModule } from "../temporal/temporal.module";
-import { PingPongService } from "../dataManager/pingPong.service";
+import { PingPongService } from "../pingPong/pingPong.service";
 import { EventsController } from "./events.contoller";
 
 @Module({

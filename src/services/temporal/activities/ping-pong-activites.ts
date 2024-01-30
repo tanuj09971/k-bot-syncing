@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Activities, Activity } from "nestjs-temporal";
-import { PingPongService } from "src/services/dataManager/pingPong.service";
 import { EventsService } from "src/services/events/events.service";
 import { Web3Service } from "src/web3/web3.service";
 import { PingEvent } from "../types/interface";
+import { PingPongService } from "src/services/pingPong/pingPong.service";
 
 @Injectable()
 @Activities()

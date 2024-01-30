@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Web3Service } from "../../web3/web3.service";
 import { TxnStatus } from "@prisma/client";
-import { PingPongService } from "../dataManager/pingPong.service";
+import { PingPongService } from "../pingPong/pingPong.service";
 import { DELAY, delay } from "./utils/utils";
 import {
   BlockRange,

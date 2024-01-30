@@ -4,7 +4,7 @@ import { PrismaService } from "src/prisma/prisma.service";
 import { TemporalController } from "./temporal.controller";
 import { ContractWatchers } from "./activities/ping-pong-activites";
 import { EventsService } from "../events/events.service";
-import { PingPongService } from "../dataManager/pingPong.service";
+import { PingPongService } from "../pingPong/pingPong.service";
 
 @Module({
   providers: [

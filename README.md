@@ -111,11 +111,11 @@ HealthCheck Response :-
     │   ├── prisma                          * Prisma Service for initializing prisma client
     │   │   └── prisma.service.ts
     │   ├── services
-    │   │   ├── dataManager                 * Data handling module
+    │   │   ├── PingPong                 * Data handling module
     │   │   │   ├── types
     │   │   │   │   └── interface.ts
-    │   │   │   ├── dataManager.module.ts
-    │   │   │   └── dataManager.service.ts
+    │   │   │   ├── PingPong.module.ts
+    │   │   │   └── PingPong.service.ts
     │   │   ├── events                      * Custom Events module for  integrating DataManger and Web3 for event handling
     │   │   │   ├── types
     │   │   │   │   └── events
