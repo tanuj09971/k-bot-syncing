@@ -27,12 +27,22 @@ export class EventsService {
   private async initialize() {
     this.contractAddress = this.configService.get("contractAddress");
   }
+
+  /**
+   * Calculates the transaction nonce for the Pong transaction, considering the last recorded nonce.
+   * @returns Promise<number>
+   */
   async calculateTransactionNonce(): Promise<number> {
     const nonce = await this.web3Service.getNonce();
     const lastPongEvent = await this.pingPongService.getLastPongTransaction();
     return lastPongEvent?.nonce ? lastPongEvent?.nonce : nonce;
   }
 
+  /**
+   * Executes the Pong transaction, handling retries and updating records accordingly.
+   * @param txnHash - The hash of the transaction.
+   * @returns Promise<void>
+   */
   async executePongTransaction(txnHash: string): Promise<void> {
     let txnSuccessfull = false;
     let loopCount = 0;
@@ -60,11 +70,16 @@ export class EventsService {
         receipt = result !== Timeout.Timeout ? result : null;
 
         if (result !== Timeout.Timeout && receipt?.status === 1) {
-          this.handleSuccessfulPongExecution(txnHash, tx);
+          this.handleDataForSuccessfulPongExecution(txnHash, tx);
           txnSuccessfull = true;
         }
       } catch (error) {
-        await this.handleFailedPongExecution(txnHash, tx, error, receipt);
+        await this.handleDataForFailedPongExecution(
+          txnHash,
+          tx,
+          error,
+          receipt
+        );
       }
       prevHash = tx?.hash;
       await delay(DELAY);
@@ -72,6 +87,7 @@ export class EventsService {
     }
   }
 
+  //build transaction for gas fee estimation
   buildTransaction(txnHash: string): { to: string; data: string } {
     return {
       to: this.contractAddress,
@@ -79,6 +95,13 @@ export class EventsService {
     };
   }
 
+  /**
+   * Creates a Pong contract call transaction and returns the transaction response.
+   * @param txnHash - The hash of the transaction.
+   * @param nonce - The transaction nonce.
+   * @param gasPriceMultiplier - The gas price multiplier.
+   * @returns Promise<TransactionResponse>
+   */
   async createPongContractCall(
     txnHash: string,
     nonce: number,
@@ -97,6 +120,12 @@ export class EventsService {
     return tx;
   }
 
+  /**
+   * Creates an initial Pong record based on the transaction details.
+   * @param txnHash - The hash of the transaction.
+   * @param tx - The transaction response object.
+   * @returns Promise<void>
+   */
   async createInitialPongRecord(
     txnHash: string,
     tx: TransactionResponse
@@ -113,6 +142,11 @@ export class EventsService {
     }
   }
 
+  /**
+   * Waits for the transaction result or times out after a specified duration.
+   * @param tx - The transaction response object.
+   * @returns Promise<TransactionReceipt | string>
+   */
   async waitForTransactionResult(
     tx: TransactionResponse
   ): Promise<TransactionReceipt | string> {
@@ -122,7 +156,15 @@ export class EventsService {
     const txnPromise = tx.wait();
     return Promise.race([txnPromise, timeoutPromise]);
   }
-  handleSuccessfulPongExecution(
+
+  /**
+   * Handles data in db for successful execution of the Pong function.
+   * @param txnHash - The hash of the transaction.
+   * @param tx - The transaction response object.
+   * @returns void
+   */
+
+  handleDataForSuccessfulPongExecution(
     txnHash: string,
     tx: TransactionResponse
   ): void {
@@ -139,7 +181,15 @@ export class EventsService {
     this.logger.log("Pong function executed successfully!");
   }
 
-  async handleFailedPongExecution(
+  /**
+   * Handles data in db for failed execution of the Pong function.
+   * @param txnHash - The hash of the transaction.
+   * @param tx - The transaction response object.
+   * @param error - The error object.
+   * @param receipt - The transaction receipt.
+   * @returns Promise<void>
+   */
+  async handleDataForFailedPongExecution(
     txnHash: string,
     tx: TransactionResponse,
     error: any,
@@ -163,6 +213,11 @@ export class EventsService {
     this.logger.error("Error calling Pong function:", error);
   }
 
+  /**
+   * Retrieves details of Ping transactions within a specified block range.
+   * @param blockRange - Object specifying the block range.
+   * @returns Promise<EthereumTransactionEvent[]>
+   */
   async getPingDetails({
     fromBlock,
     toBlock,
@@ -183,6 +238,10 @@ export class EventsService {
     return allEventLogs;
   }
 
+  /**
+   * Retrieves the block number of the last processed Ping event.
+   * @returns Promise<number>
+   */
   async getLastProcessedBlock(): Promise<number> {
     const lastPingEvent = await this.pingPongService.getLatestPing();
     return lastPingEvent?.blockNumber;

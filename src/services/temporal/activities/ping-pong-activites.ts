@@ -23,7 +23,7 @@ export class ContractWatchers {
     this.contractAddress = this.configService.get("contractAddress");
   }
   @Activity()
-  async watchBlockForPingEvents(): Promise<void> {
+  async watchBlockForPingTransactions(): Promise<void> {
     const latestBlockNumber: number = await this.web3Service.getBlockNumber();
     const startBlock =
       this.configService.get("fromBlock") ?? latestBlockNumber - 15;
@@ -56,7 +56,7 @@ export class ContractWatchers {
 }
 
 export interface PingActivity {
-  watchBlockForPingEvents(): Promise<void>;
+  watchBlockForPingTransactions(): Promise<void>;
 }
 
 export interface PongActivity {

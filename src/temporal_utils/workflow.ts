@@ -6,7 +6,7 @@ import {
 
 // Incrementally watch blocks and filter ping events using topic and create ping records in database for further processing
 // It does not submit any pong transcation
-const { watchBlockForPingEvents } = proxyActivities<PingActivity>({
+const { watchBlockForPingTransactions } = proxyActivities<PingActivity>({
   startToCloseTimeout: "10m",
 });
 
@@ -14,14 +14,13 @@ const { watchBlockForPingEvents } = proxyActivities<PingActivity>({
 // Assign a nonce
 // Create pong transaction
 // Maintain only-one pong txn for every ping by tiying up every nounce with one ping event which eliminates possibility of sending multiple pongs for a single ping
-// Retries until pong transaction is not successfull
+// Retries until pong transaction is successfull
 const { executeUnprocessedPongTransactions } = proxyActivities<PongActivity>({
   startToCloseTimeout: "10m",
 });
 
-
 export async function watcherForPingEventsSyncing(): Promise<void> {
-  return await watchBlockForPingEvents();
+  return await watchBlockForPingTransactions();
 }
 
 export async function watcherForPongEventsEmitting(): Promise<void> {
