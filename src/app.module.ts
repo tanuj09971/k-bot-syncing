@@ -1,17 +1,13 @@
-import { Module } from "@nestjs/common";
-import { AppConfigModule } from "./config/config.module";
-import { Web3Module } from "./web3/web3.module";
-import { EventModule } from "./services/events/events.module";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { TemporalModule } from "nestjs-temporal";
-import {
-  bundleWorkflowCode,
-  NativeConnection,
-  Runtime,
-} from "@temporalio/worker";
-import { TemporalJobModule } from "./services/temporal/temporal.module";
-import { HealthModule } from "./health/health.module";
-import { PingPongModule } from "./services/pingPong/pingPong.module";
+import { Module } from '@nestjs/common';
+import { AppConfigModule } from './config/config.module';
+import { Web3Module } from './web3/web3.module';
+import { EventModule } from './services/events/events.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TemporalModule } from 'nestjs-temporal';
+import { bundleWorkflowCode, NativeConnection, Runtime } from '@temporalio/worker';
+import { TemporalJobModule } from './services/temporal/temporal.module';
+import { HealthModule } from './health/health.module';
+import { PingPongModule } from './services/pingPong/pingPong.module';
 
 @Module({
   imports: [
@@ -26,29 +22,29 @@ import { PingPongModule } from "./services/pingPong/pingPong.module";
       inject: [ConfigService],
       useFactory: async (config: ConfigService) => {
         Runtime.install({});
-        const temporalHost = config.get("temporalHost");
+        const temporalHost = config.get('temporalHost');
         const connection = await NativeConnection.connect({
           address: temporalHost,
         });
         const workflowBundle = await bundleWorkflowCode({
-          workflowsPath: require.resolve("./temporal_utils/workflow"),
+          workflowsPath: require.resolve('./temporal_utils/workflow'),
         });
 
         return {
           workerOptions: {
             connection,
-            taskQueue: "default",
+            taskQueue: 'default',
             workflowBundle,
           },
           serverOptions: {
-            address: "temporal:7233",
+            address: 'temporal:7233',
           },
         };
       },
     }),
 
     TemporalModule.registerClient({
-      connection: { address: "temporal:7233" },
+      connection: { address: 'temporal:7233' },
     }),
   ],
   controllers: [],

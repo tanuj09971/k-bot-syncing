@@ -1,11 +1,11 @@
-import { Controller, Get } from "@nestjs/common";
-import { EventsService } from "./events.service";
+import { Controller, Get } from '@nestjs/common';
+import { EventsService } from './events.service';
 
-@Controller("event")
+@Controller('event')
 export class EventsController {
   constructor(private readonly eventService: EventsService) {}
 
-  @Get("fetched-block")
+  @Get('fetched-block')
   async getLastFetchedBlock() {
     return this.eventService.getLastProcessedBlock();
   }

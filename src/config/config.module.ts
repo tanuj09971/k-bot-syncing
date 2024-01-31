@@ -1,7 +1,7 @@
-import * as Joi from "@hapi/joi";
-import { Global, Module } from "@nestjs/common";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import config from "src/config/config";
+import * as Joi from '@hapi/joi';
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import config from 'src/config/config';
 
 const CONFIG_SCHEMA = Joi.object({
   name: Joi.string(),

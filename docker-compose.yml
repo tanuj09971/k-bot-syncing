@@ -1,50 +1,54 @@
 services:
+  # API service configuration
   api:
     build:
-      dockerfile: Dockerfile
-      context: .
+      dockerfile: Dockerfile # Dockerfile to build the API service
+      context: . # Build context is the current directory
     depends_on:
-      - postgres
+      - postgres # Depend on the PostgreSQL service
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/postgres
-      NODE_ENV: development
-      PORT: 3000
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/postgres # Database connection URL
+      NODE_ENV: development # Node.js environment
+      PORT: 3000 # Port on which the API service will run
     ports:
-      - "3000:3000"
-    command: sh -c "npx prisma migrate deploy && npm start"
-    restart: unless-stopped
+      - "3000:3000" # Port mapping for host:container
+    command: sh -c "npx prisma migrate deploy && npm start" # Command to run after the container starts
+    restart: unless-stopped # Restart policy
 
+  # PostgreSQL service configuration
   postgres:
-    image: postgres:14.5-alpine
+    image: postgres:14.5-alpine # PostgreSQL Docker image
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres # PostgreSQL username
+      POSTGRES_PASSWORD: password # PostgreSQL password
+      POSTGRES_DB: postgres # Default database name
     ports:
-      - '5432:5432'
-    restart: unless-stopped
+      - '5432:5432' # Port mapping for host:container
+    restart: unless-stopped # Restart policy
 
+  # Temporal service configuration
   temporal:
-    container_name: temporal
+    container_name: temporal # Container name
     depends_on:
-      - postgres
+      - postgres # Depend on the PostgreSQL service
     env_file:
-      - ./envs/temporal.env
-    image: temporalio/auto-setup:${TEMPORAL_VERSION}
+      - ./envs/temporal.env # Environment file for Temporal
+    image: temporalio/auto-setup:${TEMPORAL_VERSION} # Temporal Docker image
     ports:
-      - 7233:7233
+      - 7233:7233 # Port mapping for host:container
     volumes:
-      - ./dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig # Mount dynamicconfig volume
     labels:
-      kompose.volume.type: configMap
+      kompose.volume.type: configMap # Kompose volume type
 
+  # Temporal UI service configuration
   temporal-ui:
-    container_name: temporal-ui
+    container_name: temporal-ui # Container name
     depends_on:
-      - temporal
+      - temporal # Depend on the Temporal service
     environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
-    image: temporalio/ui:${TEMPORAL_UI_VERSION}
+      - TEMPORAL_ADDRESS=temporal:7233 # Temporal server address
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000 # CORS origins for Temporal UI
+    image: temporalio/ui:${TEMPORAL_UI_VERSION} # Temporal UI Docker image
     ports:
-      - 8080:8080
+      - 8080:8080 # Port mapping for host:container

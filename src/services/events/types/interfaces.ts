@@ -1,5 +1,8 @@
 import { TxnStatus } from "@prisma/client";
 
+export const TIMEOUT_DURATION = 210000; //Time out duration for txn stuck in mempool
+export const GAS_PRICE_MULTIPLIER = BigInt(3); //Gas multiplier for retrying the txn
+export const MAX_RANGE_SIZE = 1000; //Max block range size for fetching ping events
 export interface PingDTO {
   transactionHash;
   blockHash;
@@ -9,9 +12,7 @@ export interface PingDTO {
 export enum Timeout {
   Timeout = "Timeout",
 }
-export const TIMEOUT_DURATION = 180000;
-export const GAS_PRICE_MULTIPLIER = BigInt(3);
-export const MAX_RANGE_SIZE = 1000;
+
 export interface PongRecordDto {
   nonce: number;
   txnHash: string;
@@ -34,7 +35,7 @@ export interface BlockRange {
   toBlock: number;
 }
 
-export interface updatePongStatusDto {
+export interface UpdatePongStatusDto {
   pingId: string;
   txnStatus: TxnStatus;
 }

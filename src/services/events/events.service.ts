@@ -3,15 +3,9 @@ import { Web3Service } from "../../web3/web3.service";
 import { TxnStatus } from "@prisma/client";
 import { PingPongService } from "../pingPong/pingPong.service";
 import { DELAY, delay } from "./utils/utils";
-import {
-  BlockRange,
-  EthereumTransactionEvent,
-  MAX_RANGE_SIZE,
-  TIMEOUT_DURATION,
-  Timeout,
-} from "./types/interfaces";
+import { BlockRange, EthereumTransactionEvent, MAX_RANGE_SIZE, TIMEOUT_DURATION, Timeout } from "./types/interfaces";
 import { ConfigService } from "@nestjs/config";
-import { TransactionReceipt, TransactionResponse } from "ethers";
+import { EthersError, TransactionReceipt, TransactionResponse } from "ethers";
 @Injectable()
 export class EventsService {
   private contractAddress: string;
@@ -20,10 +14,11 @@ export class EventsService {
     private web3Service: Web3Service,
     private configService: ConfigService,
     private logger: Logger,
-    private pingPongService: PingPongService
+    private pingPongService: PingPongService,
   ) {
     this.initialize();
   }
+
   private async initialize() {
     this.contractAddress = this.configService.get("contractAddress");
   }
@@ -33,9 +28,14 @@ export class EventsService {
    * @returns Promise<number>
    */
   async calculateTransactionNonce(): Promise<number> {
-    const nonce = await this.web3Service.getNonce();
     const lastPongEvent = await this.pingPongService.getLastPongTransaction();
-    return lastPongEvent?.nonce ? lastPongEvent?.nonce : nonce;
+
+    if (lastPongEvent) {
+      return lastPongEvent.nonce;
+    } else {
+      const nonce = await this.web3Service.getNonce();
+      return nonce;
+    }
   }
 
   /**
@@ -54,14 +54,10 @@ export class EventsService {
       const nonce = await this.calculateTransactionNonce();
       if (prevHash) {
         const prevReceipt = await this.web3Service.getReceipt(prevHash);
-        if (prevReceipt.status) break;
+        if (prevReceipt?.status) break;
       }
       try {
-        tx = await this.createPongContractCall(
-          txnHash,
-          nonce,
-          gasPriceMultiplier
-        );
+        tx = await this.createPongContractCall(txnHash, nonce, gasPriceMultiplier);
         if (!loopCount && tx) {
           await this.createInitialPongRecord(txnHash, tx);
         }
@@ -74,12 +70,7 @@ export class EventsService {
           txnSuccessfull = true;
         }
       } catch (error) {
-        await this.handleDataForFailedPongExecution(
-          txnHash,
-          tx,
-          error,
-          receipt
-        );
+        await this.handleDataForFailedPongExecution(txnHash, tx, error, receipt);
       }
       prevHash = tx?.hash;
       await delay(DELAY);
@@ -102,19 +93,11 @@ export class EventsService {
    * @param gasPriceMultiplier - The gas price multiplier.
    * @returns Promise<TransactionResponse>
    */
-  async createPongContractCall(
-    txnHash: string,
-    nonce: number,
-    gasPriceMultiplier: bigint
-  ): Promise<TransactionResponse> {
+  async createPongContractCall(txnHash: string, nonce: number, gasPriceMultiplier: bigint): Promise<TransactionResponse> {
     const transaction = this.buildTransaction(txnHash);
     const gasPrice = await this.web3Service.estimateGasPrice(transaction);
     const newGasPrice = gasPrice * gasPriceMultiplier;
-    const tx = await this.web3Service.makePongContractCall(
-      txnHash,
-      nonce,
-      newGasPrice
-    );
+    const tx = await this.web3Service.makePongContractCall(txnHash, nonce, newGasPrice);
     this.logger.log("tx created", tx);
 
     return tx;
@@ -126,10 +109,7 @@ export class EventsService {
    * @param tx - The transaction response object.
    * @returns Promise<void>
    */
-  async createInitialPongRecord(
-    txnHash: string,
-    tx: TransactionResponse
-  ): Promise<void> {
+  async createInitialPongRecord(txnHash: string, tx: TransactionResponse): Promise<void> {
     if (tx.nonce !== undefined && tx.hash !== undefined) {
       await this.pingPongService.createPongRecord({
         nonce: tx?.nonce,
@@ -147,12 +127,8 @@ export class EventsService {
    * @param tx - The transaction response object.
    * @returns Promise<TransactionReceipt | string>
    */
-  async waitForTransactionResult(
-    tx: TransactionResponse
-  ): Promise<TransactionReceipt | string> {
-    const timeoutPromise = new Promise<string | Timeout>((_, resolve) =>
-      setTimeout(() => resolve(Timeout.Timeout), TIMEOUT_DURATION)
-    );
+  async waitForTransactionResult(tx: TransactionResponse): Promise<TransactionReceipt | string> {
+    const timeoutPromise = new Promise<string | Timeout>((_, resolve) => setTimeout(() => resolve(Timeout.Timeout), TIMEOUT_DURATION));
     const txnPromise = tx.wait();
     return Promise.race([txnPromise, timeoutPromise]);
   }
@@ -164,10 +140,7 @@ export class EventsService {
    * @returns void
    */
 
-  handleDataForSuccessfulPongExecution(
-    txnHash: string,
-    tx: TransactionResponse
-  ): void {
+  handleDataForSuccessfulPongExecution(txnHash: string, tx: TransactionResponse): void {
     this.pingPongService.createPongTransactionRecord({
       nonce: tx.nonce,
       txnHash: tx.hash,
@@ -189,13 +162,7 @@ export class EventsService {
    * @param receipt - The transaction receipt.
    * @returns Promise<void>
    */
-  async handleDataForFailedPongExecution(
-    txnHash: string,
-    tx: TransactionResponse,
-    error: any,
-    receipt: TransactionReceipt
-  ): Promise<void> {
-    console.log("🚀 ~ EventsService ~ receipt:", receipt);
+  async handleDataForFailedPongExecution(txnHash: string, tx: TransactionResponse, error: EthersError, receipt: TransactionReceipt): Promise<void> {
     if (txnHash && receipt?.status === 0) {
       await this.pingPongService.updatePongStatus({
         pingId: txnHash,
@@ -218,20 +185,14 @@ export class EventsService {
    * @param blockRange - Object specifying the block range.
    * @returns Promise<EthereumTransactionEvent[]>
    */
-  async getPingDetails({
-    fromBlock,
-    toBlock,
-  }: BlockRange): Promise<EthereumTransactionEvent[]> {
+  async getPingDetails({ fromBlock, toBlock }: BlockRange): Promise<EthereumTransactionEvent[]> {
     const blockRange = toBlock - fromBlock;
     const numRequests = Math.ceil(blockRange / MAX_RANGE_SIZE);
     const allEventLogs = [];
     for (let i = 0; i < numRequests; i++) {
       const startBlock = fromBlock + i * MAX_RANGE_SIZE;
       const endBlock = Math.min(toBlock, startBlock + MAX_RANGE_SIZE - 1);
-      const eventLogs = await this.web3Service.getEventLogs(
-        startBlock,
-        endBlock
-      );
+      const eventLogs = await this.web3Service.getEventLogs(startBlock, endBlock);
       allEventLogs.push(...eventLogs);
     }
     this.logger.log("EventLogs", allEventLogs);
@@ -245,5 +206,33 @@ export class EventsService {
   async getLastProcessedBlock(): Promise<number> {
     const lastPingEvent = await this.pingPongService.getLatestPing();
     return lastPingEvent?.blockNumber;
+  }
+
+  /**
+   * Determines the start block for fetching Ping details based on the latest block number.
+   * If a custom start block is configured in the application settings, it is used;
+   * otherwise, it defaults to the latest 15 block .
+   * @param latestBlockNumber - The latest block number from the Ethereum network.
+   * @returns Promise<number>
+   */
+  async getStartBlock(latestBlockNumber: number): Promise<number> {
+    const startBlock = this.configService.get("fromBlock") ?? latestBlockNumber - 15;
+    return startBlock;
+  }
+
+  /**
+   * Calculates the block range for fetching Ping details based on the latest block number.
+   * It determines the 'fromBlock' as the block number succeeding the last processed Ping event
+   * or a custom start block if no Ping events have been processed yet.
+   * The 'toBlock' is set to the current latest block number.
+   * @returns Promise<{ fromBlock: number; toBlock: number }>
+   */
+  async calculateBlockRange(): Promise<{ fromBlock: number; toBlock: number }> {
+    const latestBlockNumber: number = await this.web3Service.getBlockNumber();
+    const lastPingEvent = await this.pingPongService.getLatestPing();
+    const latestFetchedBlock: number = lastPingEvent?.blockNumber ?? (await this.getStartBlock(latestBlockNumber));
+    const fromBlock = latestFetchedBlock + 1;
+    const toBlock = latestBlockNumber;
+    return { fromBlock, toBlock };
   }
 }

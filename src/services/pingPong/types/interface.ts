@@ -1,6 +1,6 @@
 export interface CreatePingDTO {
   txnHash?: string;
-  blockNumber?: number;
+  blockNumber: number;
 }
 export interface PongTransactionCreateDTO {
   nonce: number;
