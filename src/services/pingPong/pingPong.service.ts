@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { PongRecordDto, UpdatePongStatusDto } from "../events/types/interfaces";
 import { Ping, Pong, TxnStatus } from "@prisma/client";
-import { CreatePingDTO, PongTransactionCreateDTO, PongTransactionUpdateDTO } from "./types/interface";
+import { PongTransactionCreateDTO } from "./types/interface";
 import { PingEvent } from "../temporal/types/interface";
 
 @Injectable()
@@ -120,7 +120,6 @@ export class PingPongService {
       },
     });
   }
-
 
   /**
    * Marks all Ping records with a specific transaction hash as processed.
