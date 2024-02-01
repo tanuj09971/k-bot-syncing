@@ -45,12 +45,12 @@ export class EventsService {
    */
   async executePongTransaction(txnHash: string): Promise<void> {
     let txnSuccessfull = false;
-    let loopCount = 0;
+    let retries = 0;
     let tx;
     let receipt;
     let prevHash;
     while (!txnSuccessfull) {
-      const gasPriceMultiplier = BigInt(loopCount + 1);
+      const gasPriceMultiplier = BigInt(retries + 1);
       const nonce = await this.calculateTransactionNonce();
       if (prevHash) {
         const prevReceipt = await this.web3Service.getReceipt(prevHash);
@@ -58,7 +58,7 @@ export class EventsService {
       }
       try {
         tx = await this.createPongContractCall(txnHash, nonce, gasPriceMultiplier);
-        if (!loopCount && tx) {
+        if (!retries && tx) {
           await this.createInitialPongRecord(txnHash, tx);
         }
 
@@ -74,7 +74,7 @@ export class EventsService {
       }
       prevHash = tx?.hash;
       await delay(DELAY);
-      loopCount++;
+      retries++;
     }
   }
 
