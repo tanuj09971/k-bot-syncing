@@ -1,8 +1,9 @@
-import { Controller, Logger } from '@nestjs/common';
-import { WorkflowClient } from '@temporalio/client';
-import { InjectTemporalClient } from 'nestjs-temporal';
+import { Controller, Logger } from "@nestjs/common";
+import { WorkflowClient } from "@temporalio/client";
+import { InjectTemporalClient } from "nestjs-temporal";
+import { TemporalStatus } from "./types/interface";
 
-@Controller('temporal')
+@Controller("temporal")
 export class TemporalController {
   constructor(
     @InjectTemporalClient() private readonly temporalClient: WorkflowClient,
@@ -13,8 +14,8 @@ export class TemporalController {
     try {
       const handle = this.temporalClient.getHandle(workflowId);
       const description = await handle.describe();
-      if (description.status.name === 'RUNNING') {
-        await handle.terminate('Your termination reason');
+      if (description.status.name === TemporalStatus.RUNNING) {
+        await handle.terminate(TemporalStatus.TERMINATED);
         this.logger.log(`Workflow ${workflowId} terminated successfully.`);
       } else {
         this.logger.log(`Workflow ${workflowId} is not running.`);
@@ -24,26 +25,32 @@ export class TemporalController {
     }
   }
 
+  /**
+   * Initialize and start workflows when the module is initialized.
+   */
   async onModuleInit() {
-    this.checkAndTerminateWorkflow('wf-ping');
-    this.checkAndTerminateWorkflow('wf-pong');
+    // Check and terminate specific workflows
+    this.checkAndTerminateWorkflow("wf-ping");
+    this.checkAndTerminateWorkflow("wf-pong");
 
-    const handle = await this.temporalClient.start('watcherForPingEventsSyncing', {
+    // Start a workflow to watch for ping events syncing
+    const handle = await this.temporalClient.start("watcherForPingEventsSyncing", {
       args: [],
-      taskQueue: 'default',
-      workflowId: 'wf-ping',
-      cronSchedule: '* * * * *',
+      taskQueue: "default",
+      workflowId: "wf-ping",
+      cronSchedule: "* * * * *",
       retry: {
         maximumAttempts: 3,
       },
     });
-
     this.logger.log(`Started workflow ${handle.workflowId}`);
-    const pongHandle = await this.temporalClient.start('watcherForPongEventsEmitting', {
+
+    // Start a workflow to watch for pong events emitting
+    const pongHandle = await this.temporalClient.start("watcherForPongEventsEmitting", {
       args: [],
-      taskQueue: 'default',
-      workflowId: 'wf-pong',
-      cronSchedule: '* * * * *',
+      taskQueue: "default",
+      workflowId: "wf-pong",
+      cronSchedule: "* * * * *",
       retry: {
         maximumAttempts: 3,
       },

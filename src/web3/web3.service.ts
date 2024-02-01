@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ethers } from "ethers";
 
@@ -13,7 +13,6 @@ export class Web3Service {
 
   constructor(
     @Inject(ConfigService) private configService: ConfigService,
-    private logger: Logger,
   ) {
     this.initialize();
   }
@@ -38,12 +37,12 @@ export class Web3Service {
    */
   async getEthersInstance(): Promise<ethers.JsonRpcProvider> {
     const blockNumberPromises = this.web3RpcUrls.map(async (url: string) => {
-      return new Promise<string>(async (resolve,reject) => {
+      return new Promise<string>(async (resolve, reject) => {
         const blockNumber = await this.getBlock(url);
         if (blockNumber) {
           resolve(url);
-        }else{
-          reject(new Error('Error'))
+        } else {
+          reject(new Error("Error"));
         }
       });
     });

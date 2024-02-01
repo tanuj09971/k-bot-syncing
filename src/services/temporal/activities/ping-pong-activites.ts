@@ -1,25 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Activities, Activity } from 'nestjs-temporal';
-import { EventsService } from 'src/services/events/events.service';
-import { PingPongService } from 'src/services/pingPong/pingPong.service';
+import { Injectable } from "@nestjs/common";
+import { Activities, Activity } from "nestjs-temporal";
+import { EventsService } from "src/services/events/events.service";
+import { PingPongService } from "src/services/pingPong/pingPong.service";
 
 @Injectable()
 @Activities()
 export class ContractWatchers {
-  private contractAddress: string;
-
   constructor(
-    private configService: ConfigService,
     private eventService: EventsService,
     private pingPongService: PingPongService,
-  ) {
-    this.initialize();
-  }
-
-  private async initialize() {
-    this.contractAddress = this.configService.get('contractAddress');
-  }
+  ) {}
 
   @Activity()
   async watchBlockForPingTransactions(): Promise<void> {

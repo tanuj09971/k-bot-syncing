@@ -12,20 +12,6 @@ export class PingPongService {
   // CREATE operations
 
   /**
-   * Creates a single Ping record in the database.
-   * @param data - Data for creating a Ping record.
-   * @returns Promise<void>
-   */
-  async createPingRecord(data: CreatePingDTO): Promise<void> {
-    await this.prisma.ping.create({
-      data: {
-        txnHash: data.txnHash,
-        blockNumber: data.blockNumber,
-      },
-    });
-  }
-
-  /**
    * Creates multiple Ping records in the database.
    * @param pings - Array of PingEvent objects.
    * @returns Promise<void>
@@ -119,19 +105,6 @@ export class PingPongService {
   // UPDATE operations
 
   /**
-   * Updates the isPongProcessed status of a Ping record in the database.
-   * @param txnHash - Transaction hash of the Ping record to be updated.
-   * @param isPongProcessed - New status for isPongProcessed.
-   * @returns Promise<void>
-   */
-  async updatePingStatus(txnHash: string, isPongProcessed: boolean): Promise<void> {
-    await this.prisma.ping.update({
-      where: { txnHash: txnHash },
-      data: { isPongProcessed: isPongProcessed },
-    });
-  }
-
-  /**
    * Updates the transaction status of a Pong record in the database.
    * @param dto - Data for updating the Pong record.
    * @returns Promise<void>
@@ -148,42 +121,6 @@ export class PingPongService {
     });
   }
 
-  /**
-   * Updates a Pong record in the database with new transaction details.
-   * @param txnHash - Transaction hash of the Pong record to be updated.
-   * @param txnStatus - New transaction status for the Pong record.
-   * @param pingId - TxnHash  of the associated Ping record.
-   * @param nonce - Nonce of the Pong record.
-   * @returns Promise<void>
-   */
-  async updatePongRecord(txnHash: string, txnStatus: TxnStatus, pingId: string, nonce: number): Promise<void> {
-    await this.prisma.pong.update({
-      where: {
-        pingId: pingId,
-      },
-      data: {
-        txnHash: txnHash,
-        txnStatus: txnStatus,
-        nonce: nonce,
-      },
-    });
-  }
-
-  /**
-   * Updates a PongTransaction record in the database with new details.
-   * @param param - Data for updating the PongTransaction record.
-   * @returns Promise<void>
-   */
-  async updatePongTransactionRecord({ txnHash, message }: PongTransactionUpdateDTO): Promise<void> {
-    await this.prisma.pongTransaction.update({
-      where: {
-        txnHash: txnHash,
-      },
-      data: {
-        message: message,
-      },
-    });
-  }
 
   /**
    * Marks all Ping records with a specific transaction hash as processed.

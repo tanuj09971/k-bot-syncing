@@ -8,3 +8,7 @@ export interface PingEvent {
   transactionIndex: number;
 }
 export const THREE_MINUTES_IN_MILLISECONDS = 3 * 60 * 1000;
+export enum TemporalStatus {
+  RUNNING="RUNNING",
+  TERMINATED="TERMINATED"
+}
