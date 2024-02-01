@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "src/prisma/prisma.service";
 import { PongRecordDto, UpdatePongStatusDto } from "../events/types/interfaces";
 import { Ping, Pong, TxnStatus } from "@prisma/client";
@@ -7,7 +7,10 @@ import { PingEvent } from "../temporal/types/interface";
 
 @Injectable()
 export class PingPongService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private logger: Logger,
+  ) {}
 
   // CREATE operations
 
@@ -25,6 +28,7 @@ export class PingPongService {
     await this.prisma.ping.createMany({
       data: pingRecords,
     });
+    this.logger.log("Created ping record");
   }
 
   /**
@@ -42,6 +46,7 @@ export class PingPongService {
         txnStatus: TxnStatus.InProgress,
       },
     });
+    this.logger.log("Created pong record");
   }
 
   /**
@@ -119,6 +124,7 @@ export class PingPongService {
         txnStatus: txnStatus,
       },
     });
+    this.logger.log("Updated pong status");
   }
 
   /**

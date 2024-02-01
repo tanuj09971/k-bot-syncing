@@ -29,32 +29,27 @@ export class TemporalController {
    * Initialize and start workflows when the module is initialized.
    */
   async onModuleInit() {
-    // Check and terminate specific workflows
-    this.checkAndTerminateWorkflow("wf-ping");
-    this.checkAndTerminateWorkflow("wf-pong");
+    const workflows = [
+      { id: "wf-ping", watcher: "PingEventsSyncing" },
+      { id: "wf-pong", watcher: "PongEventsEmitting" },
+    ];
 
-    // Start a workflow to watch for ping events syncing
-    const handle = await this.temporalClient.start("watcherForPingEventsSyncing", {
-      args: [],
-      taskQueue: "default",
-      workflowId: "wf-ping",
-      cronSchedule: "* * * * *",
-      retry: {
-        maximumAttempts: 3,
-      },
-    });
-    this.logger.log(`Started workflow ${handle.workflowId}`);
+    await Promise.all(
+      workflows.map(async ({ id, watcher }) => {
+        this.checkAndTerminateWorkflow(id);
 
-    // Start a workflow to watch for pong events emitting
-    const pongHandle = await this.temporalClient.start("watcherForPongEventsEmitting", {
-      args: [],
-      taskQueue: "default",
-      workflowId: "wf-pong",
-      cronSchedule: "* * * * *",
-      retry: {
-        maximumAttempts: 3,
-      },
-    });
-    this.logger.log(`Started workflow ${pongHandle.workflowId}`);
+        const handle = await this.temporalClient.start(`watcherFor${watcher}`, {
+          args: [],
+          taskQueue: "default",
+          workflowId: id,
+          cronSchedule: "* * * * *",
+          retry: {
+            maximumAttempts: 3,
+          },
+        });
+
+        this.logger.log(`Started workflow ${handle.workflowId}`);
+      }),
+    );
   }
 }

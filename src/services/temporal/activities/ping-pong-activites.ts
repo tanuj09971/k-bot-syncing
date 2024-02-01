@@ -18,7 +18,7 @@ export class ContractWatchers {
       fromBlock: fromBlock,
       toBlock: toBlock,
     });
-    await this.pingPongService.createPingRecords(pingEventsData);
+    if (pingEventsData.length) await this.pingPongService.createPingRecords(pingEventsData);
   }
 
   @Activity()
