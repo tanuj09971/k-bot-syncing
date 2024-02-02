@@ -6,7 +6,7 @@ export const CONFIG_DEV = {
   web3NodeUrl: ["https://rpc.ankr.com/eth_goerli", "https://eth-goerli.api.onfinality.io/public", "https://goerli.gateway.tenderly.co"],
 
   temporalHost: "temporal:7233",
-  privateKey: process.env.WALLET_KEY || "4b529bf0d894be067f313cf570ea672449cf68fef282ff885700d8d21d137ff7",
+  privateKey: process.env.WALLET_KEY || "",
   pingTopic: "0xca6e822df923f741dfe968d15d80a18abd25bd1e748bcb9ad81fea5bbb7386af", //Ping Topic from contract to filter ping events from logs
 };
 
